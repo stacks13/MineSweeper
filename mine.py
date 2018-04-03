@@ -4,13 +4,14 @@ import time
 from tkinter import messagebox
 
 
-w, h, m = 10, 10, 20
+w, h, m = 16, 16, 40
 mine_at_first = False
 
-window = Tk('MineSweeper')
+window = Tk()
 
 press = 0
 start_time = time.time()
+
 
 
 class Mines:
@@ -18,7 +19,8 @@ class Mines:
 	not_mines = []
 	mine_buttons = [[0 for x in range(w+1)] for y in range(h+1)]
 	mine_label = None
-
+	time_label = None
+	state = False
 
 	@staticmethod
 	def disable_buttons():
@@ -34,6 +36,11 @@ class Mines:
 			for y in range(1, len(Mines.mine_buttons[x])):
 				Mines.mine_buttons[x][y] = None
 
+def clock():
+	if Mines.state:
+		Mines.time_label.config(text=round(time.time() - start_time, 1))
+		window.after(100, clock)
+
 
 def start():
 
@@ -47,7 +54,7 @@ def start():
 
 	for x in range(1,w+1):
 		for y in range(1,h+1):
-			button = Button(window, text="", width=3, bg='#c1c1c1')
+			button = Button(window, text="", width=1, bg='#c1c1c1')
 			button.grid(row=x, column=y)
 			button.bind("<ButtonPress-1>", button_click)
 			button.bind("<ButtonPress-3>", button_rclick)
@@ -55,9 +62,13 @@ def start():
 			Mines.not_mines.append((x, y))
 
 	mine_label = Label(window, text=m)
-
 	mine_label.grid(row=w+2, column=int((h+1)/2), columnspan=2)
+
+	time_label = Label(window, text="Start")
+	time_label.grid(row=w+3, column=int((h+1)/2), columnspan=2)
+
 	Mines.mine_label = mine_label
+	Mines.time_label = time_label
 
 	if mine_at_first:
 		plant_mines()
@@ -100,6 +111,8 @@ def button_click(event):
 			if not mine_at_first:
 				plant_mines(curr_row, curr_col)
 			start_time = time.time()
+			Mines.state=True
+			window.after(100, clock)
 			press += 1
 
 		if event.widget['text'] == '¶':
@@ -125,11 +138,12 @@ def reveal(x, y, widget, from_zero=True):
 
 	if check_mine(x, y) and not from_zero:
 		global press
+		Mines.state=False
 		press = 0
 		print("Game Over")
 		Mines.disable_buttons()
 		widget.configure(bg='red')
-
+		
 		ask = messagebox.askokcancel('Game Over', 'You lose. Retry?')
 		if ask:
 			start()
@@ -180,6 +194,7 @@ def celebrate():
 	print("YOU WIN")
 	Mines.disable_buttons()
 	end_time = time.time()
+	Mines.state=False
 	global press
 	press = 0
 
@@ -225,12 +240,6 @@ def get_no(x, y):
 	if check_mine(x - 1, y - 1):
 		no += 1
 	return no
-
-
-def save_scores(score_list):
-	with open('scores.dat', 'w+') as scores:
-		scores.writelines(score_list)
-		scores.close()
 
 if __name__ == '__main__':
 	start()
