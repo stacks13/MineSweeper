@@ -1,23 +1,22 @@
 from tkinter import *
 import random as rd
 import time
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
+import json
 
-
-w, h, m = 16, 16, 40
+h, w, m = 40, 18, 100
 mine_at_first = False
 
-window = Tk()
+window = Tk("MineSweeper")
 
 press = 0
 start_time = time.time()
 
 
-
 class Mines:
 	mines = []
 	not_mines = []
-	mine_buttons = [[0 for x in range(w+1)] for y in range(h+1)]
+	mine_buttons = [[0 for x in range(h + 1)] for y in range(w + 1)]
 	mine_label = None
 	time_label = None
 	state = False
@@ -36,6 +35,36 @@ class Mines:
 			for y in range(1, len(Mines.mine_buttons[x])):
 				Mines.mine_buttons[x][y] = None
 
+
+def showHighScores(newScore):
+	highscores = []
+	try:
+		with open('highscores.json', 'r') as f:
+			str_highscores = f.readlines()
+		highscores = json.loads("".join(str_highscores))
+		highscores.sort(key=lambda x: x['score'])
+	except Exception as e:
+		print(e)
+
+	if len(highscores) > 10:
+		if newScore <= highscores[:10][-1]['score']:
+			name = simpledialog.askstring("Input", "What is your name?")
+			highscores.append({'name': name[:15], 'score': newScore})
+	else:
+		name = simpledialog.askstring("Input", "What is your name?")
+		highscores.append({'name': name[:15], 'score': newScore})
+
+	with open('highscores.json', 'w') as f:
+		f.writelines(json.dumps(highscores))
+
+	leaderboard = ''
+	highscores.sort(key=lambda x: x['score'])
+	for i in range(len(highscores)):
+		leaderboard += "{}\t{}\n\t{}\n".format(i + 1, highscores[i]['name'], highscores[i]['score'])
+
+	messagebox.showinfo('Leadeboards', leaderboard)
+
+
 def clock():
 	if Mines.state:
 		Mines.time_label.config(text=round(time.time() - start_time, 1))
@@ -43,7 +72,6 @@ def clock():
 
 
 def start():
-
 	global window
 	Mines.clear_all()
 
@@ -52,9 +80,9 @@ def start():
 		counter += 1
 		child.destroy()
 
-	for x in range(1,w+1):
-		for y in range(1,h+1):
-			button = Button(window, text="", width=1, bg='#c1c1c1')
+	for x in range(1, w + 1):
+		for y in range(1, h + 1):
+			button = Button(window, text="", width=4, height=2, bg='#c1c1c1')
 			button.grid(row=x, column=y)
 			button.bind("<ButtonPress-1>", button_click)
 			button.bind("<ButtonPress-3>", button_rclick)
@@ -62,10 +90,10 @@ def start():
 			Mines.not_mines.append((x, y))
 
 	mine_label = Label(window, text=m)
-	mine_label.grid(row=w+2, column=int((h+1)/2), columnspan=2)
+	mine_label.grid(row=w + 2, column=int((h + 1) / 2), columnspan=2)
 
 	time_label = Label(window, text="Start")
-	time_label.grid(row=w+3, column=int((h+1)/2), columnspan=2)
+	time_label.grid(row=w + 3, column=int((h + 1) / 2), columnspan=2)
 
 	Mines.mine_label = mine_label
 	Mines.time_label = time_label
@@ -76,28 +104,26 @@ def start():
 	window.mainloop()
 
 
-def except_mine(n, end, start = 1):
-	return list(range(start, n)) + list(range(n+1, end))
+def except_mine(n, end, start=1):
+	return list(range(start, n)) + list(range(n + 1, end))
 
 
 def plant_mines(row=None, col=None):
 	count = 1
 	tots = []
-	for x in range(1, w+1):
-		for y in range(1, h+1):
+	for x in range(1, w + 1):
+		for y in range(1, h + 1):
 			if x != row or y != col:
-				tots.append((x,y))
+				tots.append((x, y))
 
-	while count<=m:
-
-		print(len(tots))
+	while count <= m:
 		rand_cell = rd.choice(tots)
 
 		if not check_mine(rand_cell[0], rand_cell[1]):
 			Mines.mines.append((rand_cell[0], rand_cell[1]))
 			Mines.not_mines.remove((rand_cell[0], rand_cell[1]))
 			tots.remove(rand_cell)
-			count+=1
+			count += 1
 
 
 def button_click(event):
@@ -106,12 +132,12 @@ def button_click(event):
 
 		grid_info = event.widget.grid_info()
 		curr_row, curr_col = grid_info['row'], grid_info['column']
-		
+
 		if press == 0:
 			if not mine_at_first:
 				plant_mines(curr_row, curr_col)
 			start_time = time.time()
-			Mines.state=True
+			Mines.state = True
 			window.after(100, clock)
 			press += 1
 
@@ -125,25 +151,25 @@ def button_rclick(event):
 	if event.widget['state'] != DISABLED:
 		if event.widget['text'] == '¶':
 			mines_left = int(Mines.mine_label['text'])
-			Mines.mine_label.config(text=mines_left+1)
+			Mines.mine_label.config(text=mines_left + 1)
 			event.widget.config(text='', bg='#c1c1c1')
 		else:
 			mines_left = int(Mines.mine_label['text'])
 			Mines.mine_label.config(text=mines_left - 1)
 			event.widget.config(text='¶', bg='#f7b071')
-		
+
 
 def reveal(x, y, widget, from_zero=True):
 	global window
 
 	if check_mine(x, y) and not from_zero:
 		global press
-		Mines.state=False
+		Mines.state = False
 		press = 0
 		print("Game Over")
 		Mines.disable_buttons()
 		widget.configure(bg='red')
-		
+
 		ask = messagebox.askokcancel('Game Over', 'You lose. Retry?')
 		if ask:
 			start()
@@ -151,7 +177,7 @@ def reveal(x, y, widget, from_zero=True):
 	else:
 		no = get_no(x, y)
 
-		if no==0:
+		if no == 0:
 			widget.config(state=DISABLED)
 			widget.config(bg=window.cget('bg'))
 		else:
@@ -164,26 +190,25 @@ def reveal(x, y, widget, from_zero=True):
 			celebrate()
 
 		if no == 0:
-			if find_in_grid(x-1, y-1) and (not check_reveal(x-1, y-1)) :
-				reveal(x-1, y-1, find_in_grid(x-1, y-1))
-			if find_in_grid(x-1, y) and (not check_reveal(x-1, y)):
-				reveal(x-1, y, find_in_grid(x-1, y))
-			if find_in_grid(x-1, y+1) and (not check_reveal(x-1, y+1)) :
-				reveal(x-1, y+1, find_in_grid(x-1, y+1))
-			if find_in_grid(x, y-1) and (not check_reveal(x, y-1))  :
-				reveal(x, y-1, find_in_grid(x, y-1))
-			if find_in_grid(x, y+1) and (not check_reveal(x, y+1))  :
-				reveal(x, y+1, find_in_grid(x, y+1))
-			if find_in_grid(x+1, y-1) and (not check_reveal(x+1, y-1))  :
-				reveal(x+1, y-1, find_in_grid(x+1, y-1))
-			if find_in_grid(x+1, y) and (not check_reveal(x+1, y))  :
-				reveal(x+1, y, find_in_grid(x+1, y))
-			if find_in_grid(x+1, y+1) and (not check_reveal(x+1, y+1))  :
-				reveal(x+1, y+1, find_in_grid(x+1, y+1))
+			if find_in_grid(x - 1, y - 1) and (not check_reveal(x - 1, y - 1)):
+				reveal(x - 1, y - 1, find_in_grid(x - 1, y - 1))
+			if find_in_grid(x - 1, y) and (not check_reveal(x - 1, y)):
+				reveal(x - 1, y, find_in_grid(x - 1, y))
+			if find_in_grid(x - 1, y + 1) and (not check_reveal(x - 1, y + 1)):
+				reveal(x - 1, y + 1, find_in_grid(x - 1, y + 1))
+			if find_in_grid(x, y - 1) and (not check_reveal(x, y - 1)):
+				reveal(x, y - 1, find_in_grid(x, y - 1))
+			if find_in_grid(x, y + 1) and (not check_reveal(x, y + 1)):
+				reveal(x, y + 1, find_in_grid(x, y + 1))
+			if find_in_grid(x + 1, y - 1) and (not check_reveal(x + 1, y - 1)):
+				reveal(x + 1, y - 1, find_in_grid(x + 1, y - 1))
+			if find_in_grid(x + 1, y) and (not check_reveal(x + 1, y)):
+				reveal(x + 1, y, find_in_grid(x + 1, y))
+			if find_in_grid(x + 1, y + 1) and (not check_reveal(x + 1, y + 1)):
+				reveal(x + 1, y + 1, find_in_grid(x + 1, y + 1))
 
 
 def check_mine(x, y):
-
 	for z in range(len(Mines.mines)):
 		if (Mines.mines[z])[0] == x and (Mines.mines[z])[1] == y:
 			return True
@@ -194,19 +219,21 @@ def celebrate():
 	print("YOU WIN")
 	Mines.disable_buttons()
 	end_time = time.time()
-	Mines.state=False
+	Mines.state = False
 	global press
 	press = 0
 
-	ask = messagebox.askokcancel('Congratulations', 'You won in ' + str(round(end_time - start_time, 1)) + ' seconds. Wanna go again?')
+	messagebox.showinfo('Congratulations', 'You won in ' + str(round(end_time - start_time, 1)) + ' seconds.')
+	showHighScores(round(end_time - start_time, 1))
+	ask = messagebox.askokcancel('Another game?', 'Wanna go again?')
 
 	if ask:
 		start()
+
 	return
 
 
 def find_in_grid(x, y):
-
 	try:
 		widget = Mines.mine_buttons[x][y]
 		return widget
@@ -241,6 +268,6 @@ def get_no(x, y):
 		no += 1
 	return no
 
+
 if __name__ == '__main__':
 	start()
-
